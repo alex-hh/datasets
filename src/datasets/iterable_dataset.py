@@ -1032,9 +1032,11 @@ class MappedExamplesIterable(_BaseExamplesIterable):
             ex_iterable = RebatchedArrowExamplesIterable(
                 self.ex_iterable, batch_size=self.batch_size if self.batched else 1, drop_last_batch=False
             )
+            print(f"MappedExamplesIterable _iter using arrow iterator {self.ex_iterable} {self.ex_iterable.iter_arrow}")
             inputs_iterator = formatted_arrow_examples_iterator(ex_iterable, formatter, batched=self.batched)
 
         else:
+            print(f"MappedExamplesIterable _iter using python iterator {self.ex_iterable} {self.ex_iterable.iter_arrow}")
             inputs_iterator = formatted_python_examples_iterator(
                 self.ex_iterable, batch_size=self.batch_size, formatter=formatter, batched=self.batched
             )
@@ -1252,6 +1254,7 @@ class FilteredExamplesIterable(_BaseExamplesIterable):
 
     @property
     def iter_arrow(self):
+        print("Testing filtered examples iterable iter_arrow", self.formatting, self.ex_iterable, self.ex_iterable.iter_arrow)
         if self.formatting and self.ex_iterable.iter_arrow:
             return self._iter_arrow
 
@@ -1291,9 +1294,11 @@ class FilteredExamplesIterable(_BaseExamplesIterable):
             ex_iterable = RebatchedArrowExamplesIterable(
                 self.ex_iterable, batch_size=self.batch_size if self.batched else 1, drop_last_batch=False
             )
+            print(f"FilteredExamplesIterable _iter using arrow iterator {self.ex_iterable} {self.ex_iterable.iter_arrow}")
             inputs_iterator = formatted_arrow_examples_iterator(ex_iterable, formatter, batched=self.batched)
 
         else:
+            print(f"FilteredExamplesIterable _iter using python iterator {self.ex_iterable} {self.ex_iterable.iter_arrow}")
             inputs_iterator = formatted_python_examples_iterator(
                 self.ex_iterable, batch_size=self.batch_size, formatter=formatter, batched=self.batched
             )
