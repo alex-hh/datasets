@@ -1751,7 +1751,6 @@ class TypedExamplesIterable(_BaseExamplesIterable):
         # Then for each example, `TypedExamplesIterable` automatically fills missing columns with None.
         # This is done with `_apply_feature_types_on_example`.
         for key, example in self.ex_iterable:
-            print(f"TypedExamplesIterable iter: {self.ex_iterable}")
             yield (
                 key,
                 _apply_feature_types_on_example(example, self.features, token_per_repo_id=self.token_per_repo_id),
@@ -2059,7 +2058,6 @@ class IterableDataset(DatasetInfoMixin):
             else:
                 for key, example in ex_iterable:
                     if self.features and not ex_iterable.is_typed:
-                        print(f"IterableDataset _iter_pytorch: example is not typed {ex_iterable}")
                         # `IterableDataset` automatically fills missing columns with None.
                         # This is done with `_apply_feature_types_on_example`.
                         example = _apply_feature_types_on_example(
@@ -2158,7 +2156,6 @@ class IterableDataset(DatasetInfoMixin):
             if self.features and not ex_iterable.is_typed:
                 # `IterableDataset` automatically fills missing columns with None.
                 # This is done with `_apply_feature_types_on_example`.
-                print(f"IterableDataset __iter__: example is not typed {ex_iterable}")
                 example = _apply_feature_types_on_example(
                     example, self.features, token_per_repo_id=self._token_per_repo_id
                 )
@@ -2457,7 +2454,6 @@ class IterableDataset(DatasetInfoMixin):
          {'label': 1, 'text': 'Review: effective but too-tepid biopic'}]
         ```
         """
-        print("in map")
         if isinstance(input_columns, str):
             input_columns = [input_columns]
         if isinstance(remove_columns, str):
