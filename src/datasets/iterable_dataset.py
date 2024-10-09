@@ -993,8 +993,13 @@ class MappedExamplesIterable(_BaseExamplesIterable):
 
     @property
     def iter_arrow(self):
-        if self.formatting and self.formatting.format_type == "arrow":
-            return self._iter_arrow
+        if self.formatting and self.ex_iterable.iter_arrow:
+            if self.formatting.format_type == "arrow":
+                return self._iter_arrow
+            else:
+                return formatted_arrow_examples_iterator(
+                    self.ex_iterable, formatter=get_formatter(self.formatting.format_type), batched=self.batched
+                )
 
     @property
     def is_typed(self):
@@ -1252,8 +1257,13 @@ class FilteredExamplesIterable(_BaseExamplesIterable):
 
     @property
     def iter_arrow(self):
-        if self.formatting and self.formatting.format_type == "arrow":
-            return self._iter_arrow
+        if self.formatting and self.ex_iterable.iter_arrow:
+            if self.formatting.format_type == "arrow":
+                return self._iter_arrow
+            else:
+                return formatted_arrow_examples_iterator(
+                    self.ex_iterable, formatter=get_formatter(self.formatting.format_type), batched=self.batched
+                )
 
     @property
     def is_typed(self):
@@ -1364,6 +1374,8 @@ class FilteredExamplesIterable(_BaseExamplesIterable):
             self._state_dict["previous_state"] = self.ex_iterable.state_dict()
             self._state_dict["num_examples_since_previous_state"] = 0
         current_idx = self._state_dict["previous_state_example_idx"] if self._state_dict else 0
+
+        formatter = get_formatter(self.formatting.format_type) if self.formatting else None
         for key, pa_table in iterator:
             if (
                 self.batched
@@ -1394,7 +1406,7 @@ class FilteredExamplesIterable(_BaseExamplesIterable):
                 if self._state_dict:
                     self._state_dict["previous_state_example_idx"] += len(pa_table)
                 if len(output_table) > 0:
-                    yield key, output_table
+                    yield key, formatter.format_batch(output_table)
             else:
                 for i, pa_subtable in enumerate(output_table.to_reader(max_chunksize=max_chunksize)):
                     current_idx += 1
