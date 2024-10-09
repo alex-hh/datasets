@@ -2463,9 +2463,11 @@ class IterableDataset(DatasetInfoMixin):
         if fn_kwargs is None:
             fn_kwargs = {}
         if self._ex_iterable.is_typed:
+            print(f"MappedExamplesIterable iter: ex_iterable is typed {self._ex_iterable}")
             # TODO: check for equal features
             ex_iterable = self._ex_iterable
         else:
+            print(f"MappedExamplesIterable iter: ex_iterable is not typed {self._ex_iterable}")
             ex_iterable = TypedExamplesIterable(
                 self._ex_iterable, self._info.features, token_per_repo_id=self._token_per_repo_id
             )
@@ -2553,9 +2555,11 @@ class IterableDataset(DatasetInfoMixin):
 
         # We need the examples to be decoded for certain feature types like Image or Audio, so we use TypedExamplesIterable here
         if self._ex_iterable.is_typed:
+            print(f"FilteredExamplesIterable iter: ex_iterable is typed {self._ex_iterable}")
             # TODO: check for equal features
             ex_iterable = self._ex_iterable
         else:
+            print(f"FilteredExamplesIterable iter: ex_iterable is not typed {self._ex_iterable}")
             ex_iterable = TypedExamplesIterable(
                 self._ex_iterable, self._info.features, token_per_repo_id=self._token_per_repo_id
             )
