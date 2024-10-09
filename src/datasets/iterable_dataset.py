@@ -997,8 +997,11 @@ class MappedExamplesIterable(_BaseExamplesIterable):
             if self.formatting.format_type == "arrow":
                 return self._iter_arrow
             else:
-                return formatted_arrow_examples_iterator(
-                    self.ex_iterable, formatter=get_formatter(self.formatting.format_type), batched=self.batched
+                return partial(
+                    formatted_arrow_examples_iterator,
+                    self.ex_iterable,
+                    formatter=get_formatter(self.formatting.format_type),
+                    batched=self.batched,
                 )
 
     @property
@@ -1261,8 +1264,11 @@ class FilteredExamplesIterable(_BaseExamplesIterable):
             if self.formatting.format_type == "arrow":
                 return self._iter_arrow
             else:
-                return formatted_arrow_examples_iterator(
-                    self.ex_iterable, formatter=get_formatter(self.formatting.format_type), batched=self.batched
+                return partial(
+                    formatted_arrow_examples_iterator,
+                    self.ex_iterable,
+                    formatter=get_formatter(self.formatting.format_type),
+                    batched=self.batched,
                 )
 
     @property
