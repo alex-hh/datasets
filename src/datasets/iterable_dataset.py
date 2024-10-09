@@ -2462,11 +2462,13 @@ class IterableDataset(DatasetInfoMixin):
             function = identity_func
         if fn_kwargs is None:
             fn_kwargs = {}
-        ex_iterable = (
-            TypedExamplesIterable(self._ex_iterable, self._info.features, token_per_repo_id=self._token_per_repo_id)
-            if self._info.features is not None
-            else self._ex_iterable
-        )
+        if self._ex_iterable.is_typed:
+            # TODO: check for equal features
+            ex_iterable = self._ex_iterable
+        else:
+            ex_iterable = TypedExamplesIterable(
+                self._ex_iterable, self._info.features, token_per_repo_id=self._token_per_repo_id
+            )
         ex_iterable = (
             RebatchedArrowExamplesIterable(
                 ex_iterable, batch_size=batch_size if batched else 1, drop_last_batch=drop_last_batch
@@ -2550,10 +2552,16 @@ class IterableDataset(DatasetInfoMixin):
             input_columns = [input_columns]
 
         # We need the examples to be decoded for certain feature types like Image or Audio, so we use TypedExamplesIterable here
+        if self._ex_iterable.is_typed:
+            # TODO: check for equal features
+            ex_iterable = self._ex_iterable
+        else:
+            ex_iterable = TypedExamplesIterable(
+                self._ex_iterable, self._info.features, token_per_repo_id=self._token_per_repo_id
+            )
+
         ex_iterable = FilteredExamplesIterable(
-            TypedExamplesIterable(self._ex_iterable, self._info.features, token_per_repo_id=self._token_per_repo_id)
-            if self._info.features is not None
-            else self._ex_iterable,
+            ex_iterable,
             function=function,
             with_indices=with_indices,
             input_columns=input_columns,
