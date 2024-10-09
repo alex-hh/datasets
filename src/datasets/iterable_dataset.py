@@ -130,6 +130,10 @@ class _BaseExamplesIterable:
     def iter_arrow(self) -> Optional[Callable[[], Iterator[Tuple[Key, pa.Table]]]]:
         return None
 
+    @property
+    def is_typed(self) -> bool:
+        return False
+
     def shuffle_data_sources(self, generator: np.random.Generator) -> "_BaseExamplesIterable":
         """
         Either shuffle the shards/sources of the dataset, or propagate the shuffling to the underlying iterable.
@@ -393,6 +397,10 @@ class RebatchedArrowExamplesIterable(_BaseExamplesIterable):
     def iter_arrow(self):
         return self._iter_arrow
 
+    @property
+    def is_typed(self):
+        return self.ex_iterable.is_typed
+
     def _init_state_dict(self) -> dict:
         self._state_dict = {
             "ex_iterable": self.ex_iterable._init_state_dict(),
@@ -518,6 +526,10 @@ class SelectColumnsIterable(_BaseExamplesIterable):
         if self.ex_iterable.iter_arrow:
             return self._iter_arrow
 
+    @property
+    def is_typed(self):
+        return self.ex_iterable.is_typed
+
     def _init_state_dict(self) -> dict:
         self._state_dict = self.ex_iterable._init_state_dict()
         return self._state_dict
@@ -549,6 +561,10 @@ class StepExamplesIterable(_BaseExamplesIterable):
         self.step = step
         self.offset = offset
         # TODO(QL): implement iter_arrow
+
+    @property
+    def is_typed(self):
+        return self.ex_iterable.is_typed
 
     def _init_state_dict(self) -> dict:
         self._state_dict = self.ex_iterable._init_state_dict()
@@ -592,6 +608,10 @@ class CyclingMultiSourcesExamplesIterable(_BaseExamplesIterable):
         # if oversampling ("all_exhausted"), we stop as soons as every dataset is exhausted, i.e as soon as every samples of every dataset has been visited at least once
         self.bool_strategy_func = np.all if (stopping_strategy == "all_exhausted") else np.any
         # TODO(QL): implement iter_arrow
+
+    @property
+    def is_typed(self):
+        return self.ex_iterables[0].is_typed
 
     def _get_indices_iterator(self):
         # this is an infinite iterator to keep track of which iterator we want to pick examples from
@@ -688,6 +708,10 @@ class VerticallyConcatenatedMultiSourcesExamplesIterable(_BaseExamplesIterable):
         self.ex_iterables = ex_iterables
 
     @property
+    def is_typed(self):
+        return self.ex_iterables[0].is_typed
+
+    @property
     def iter_arrow(self):
         if all(ex_iterable.iter_arrow is not None for ex_iterable in self.ex_iterables):
             return self._iter_arrow
@@ -767,6 +791,10 @@ class HorizontallyConcatenatedMultiSourcesExamplesIterable(_BaseExamplesIterable
         self.ex_iterables = ex_iterables
         # TODO(QL): implement iter_arrow
 
+    @property
+    def is_typed(self):
+        return self.ex_iterables[0].is_typed
+
     def _init_state_dict(self) -> dict:
         self._state_dict = {"ex_iterables": [ex_iterable._init_state_dict() for ex_iterable in self.ex_iterables]}
         return self._state_dict
@@ -825,6 +853,10 @@ class RandomlyCyclingMultiSourcesExamplesIterable(CyclingMultiSourcesExamplesIte
         self.generator = deepcopy(generator)
         self.probabilities = probabilities
         # TODO(QL): implement iter_arrow
+
+    @property
+    def is_typed(self):
+        return self.ex_iterables[0].is_typed
 
     def _get_indices_iterator(self):
         rng = deepcopy(self.generator)
@@ -963,6 +995,10 @@ class MappedExamplesIterable(_BaseExamplesIterable):
     def iter_arrow(self):
         if self.formatting and self.formatting.format_type == "arrow":
             return self._iter_arrow
+
+    @property
+    def is_typed(self):
+        return self.ex_iterable.is_typed
 
     def _init_state_dict(self) -> dict:
         self._state_dict = {
@@ -1219,6 +1255,10 @@ class FilteredExamplesIterable(_BaseExamplesIterable):
         if self.formatting and self.ex_iterable.iter_arrow:
             return self._iter_arrow
 
+    @property
+    def is_typed(self):
+        return self.ex_iterable.is_typed
+
     def _init_state_dict(self) -> dict:
         self._state_dict = {
             "ex_iterable": self.ex_iterable._init_state_dict(),
@@ -1411,6 +1451,10 @@ class BufferShuffledExamplesIterable(_BaseExamplesIterable):
         self.generator = generator
         # TODO(QL): implement iter_arrow
 
+    @property
+    def is_typed(self):
+        return self.ex_iterable.is_typed
+
     def _init_state_dict(self) -> dict:
         self._state_dict = self.ex_iterable._init_state_dict()
         self._original_state_dict = self.state_dict()
@@ -1481,6 +1525,10 @@ class SkipExamplesIterable(_BaseExamplesIterable):
         self.split_when_sharding = split_when_sharding
         # TODO(QL): implement iter_arrow
 
+    @property
+    def is_typed(self):
+        return self.ex_iterable.is_typed
+
     def _init_state_dict(self) -> dict:
         self._state_dict = {"skipped": False, "ex_iterable": self.ex_iterable._init_state_dict()}
         return self._state_dict
@@ -1543,6 +1591,10 @@ class TakeExamplesIterable(_BaseExamplesIterable):
         self.block_sources_order_when_shuffling = block_sources_order_when_shuffling
         self.split_when_sharding = split_when_sharding
         # TODO(QL): implement iter_arrow
+
+    @property
+    def is_typed(self):
+        return self.ex_iterable.is_typed
 
     def _init_state_dict(self) -> dict:
         self._state_dict = {"num_taken": 0, "ex_iterable": self.ex_iterable._init_state_dict()}
@@ -1645,6 +1697,10 @@ class TypedExamplesIterable(_BaseExamplesIterable):
     def iter_arrow(self):
         if self.ex_iterable.iter_arrow is not None:
             return self._iter_arrow
+
+    @property
+    def is_typed(self):
+        return True
 
     def _init_state_dict(self) -> dict:
         self._state_dict = self.ex_iterable._init_state_dict()
@@ -1960,7 +2016,7 @@ class IterableDataset(DatasetInfoMixin):
                 return
             else:
                 for key, example in ex_iterable:
-                    if self.features:
+                    if self.features and not ex_iterable.is_typed:
                         # `IterableDataset` automatically fills missing columns with None.
                         # This is done with `_apply_feature_types_on_example`.
                         example = _apply_feature_types_on_example(
@@ -2056,7 +2112,7 @@ class IterableDataset(DatasetInfoMixin):
             return
 
         for key, example in ex_iterable:
-            if self.features:
+            if self.features and not ex_iterable.is_typed:
                 # `IterableDataset` automatically fills missing columns with None.
                 # This is done with `_apply_feature_types_on_example`.
                 example = _apply_feature_types_on_example(
@@ -2098,7 +2154,7 @@ class IterableDataset(DatasetInfoMixin):
             if drop_last_batch and len(examples) < batch_size:  # ignore last batch
                 return
             batch = _examples_to_batch(examples)
-            if self.features:
+            if self.features and not ex_iterable.is_typed:
                 # `IterableDataset` automatically fills missing columns with None.
                 # This is done with `_apply_feature_types_on_batch`.
                 batch = _apply_feature_types_on_batch(batch, self.features, token_per_repo_id=self._token_per_repo_id)
@@ -2333,11 +2389,13 @@ class IterableDataset(DatasetInfoMixin):
             function = identity_func
         if fn_kwargs is None:
             fn_kwargs = {}
-        ex_iterable = (
-            TypedExamplesIterable(self._ex_iterable, self._info.features, token_per_repo_id=self._token_per_repo_id)
-            if self._info.features is not None
-            else self._ex_iterable
-        )
+        if self._ex_iterable.is_typed:
+            # TODO: check for equal features
+            ex_iterable = self._ex_iterable
+        else:
+            ex_iterable = TypedExamplesIterable(
+                self._ex_iterable, self._info.features, token_per_repo_id=self._token_per_repo_id
+            )
         ex_iterable = (
             RebatchedArrowExamplesIterable(ex_iterable, batch_size=batch_size, drop_last_batch=drop_last_batch)
             if self._formatting and self._formatting.format_type == "arrow"
@@ -2418,15 +2476,17 @@ class IterableDataset(DatasetInfoMixin):
         if isinstance(input_columns, str):
             input_columns = [input_columns]
 
-        # TODO(QL): keep the features (right now if we keep it it would call decode_example again on an already decoded example)
-        info = copy.deepcopy(self._info)
-        info.features = None
-
         # We need the examples to be decoded for certain feature types like Image or Audio, so we use TypedExamplesIterable here
+        if self._ex_iterable.is_typed:
+            # TODO: check for equal features
+            ex_iterable = self._ex_iterable
+        else:
+            ex_iterable = TypedExamplesIterable(
+                self._ex_iterable, self._info.features, token_per_repo_id=self._token_per_repo_id
+            )
+
         ex_iterable = FilteredExamplesIterable(
-            TypedExamplesIterable(self._ex_iterable, self._info.features, token_per_repo_id=self._token_per_repo_id)
-            if self._info.features is not None
-            else self._ex_iterable,
+            ex_iterable,
             function=function,
             with_indices=with_indices,
             input_columns=input_columns,
@@ -2437,7 +2497,7 @@ class IterableDataset(DatasetInfoMixin):
         )
         return IterableDataset(
             ex_iterable=ex_iterable,
-            info=info,
+            info=self._info,
             split=self._split,
             formatting=self._formatting,
             shuffling=copy.deepcopy(self._shuffling),
