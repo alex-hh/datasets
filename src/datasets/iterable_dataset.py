@@ -1219,7 +1219,8 @@ class FilteredExamplesIterable(_BaseExamplesIterable):
 
     @property
     def iter_arrow(self):
-        if self.formatting and self.ex_iterable.iter_arrow:
+        # if self.formatting is not None, we format, filter, then return arrow iterator
+        if self.ex_iterable.iter_arrow:
             return self._iter_arrow
 
     @property
@@ -1252,8 +1253,6 @@ class FilteredExamplesIterable(_BaseExamplesIterable):
             num_examples_to_skip = 0
         iterator = iter(self.ex_iterable)
 
-        # N.B. Formatting will get called twice (in FormattedExamplesIterator and here) - hopefully not expensive...
-        # TODO: use ex_iterable.is_formatted or something...
         if self.formatting:
             formatter = get_formatter(self.formatting.format_type)
             format_dict = (
@@ -1698,7 +1697,7 @@ class FormattedExamplesIterable(_BaseExamplesIterable):
             formatter = PythonFormatter()
         else:
             formatter = get_formatter(
-                self.format_type, features=self.features, token_per_repo_id=self.token_per_repo_id
+                self.formatting.format_type, features=self.features, token_per_repo_id=self.token_per_repo_id
             )
         if self.ex_iterable.iter_arrow:
             # feature casting (inc column addition) handled within self._iter_arrow()
@@ -1713,9 +1712,10 @@ class FormattedExamplesIterable(_BaseExamplesIterable):
                 else cast_to_python_objects  # cast in case features is None
             )
             for key, example in self.ex_iterable:
-                example = _apply_feature_types_on_example(
-                    example, self.features, token_per_repo_id=self.token_per_repo_id
-                )
+                if self.features:
+                    example = _apply_feature_types_on_example(
+                        example, self.features, token_per_repo_id=self.token_per_repo_id
+                    )
                 yield key, format_dict(example)
 
     def _iter_arrow(self) -> Iterator[Tuple[Key, pa.Table]]:
@@ -1739,7 +1739,7 @@ class FormattedExamplesIterable(_BaseExamplesIterable):
             self.ex_iterable.shuffle_data_sources(generator),
             features=self.features,
             token_per_repo_id=self.token_per_repo_id,
-            format_type=self.format_type,
+            formatting=self.formatting,
         )
 
     def shard_data_sources(self, worker_id: int, num_workers: int) -> "FormattedExamplesIterable":
@@ -1748,7 +1748,7 @@ class FormattedExamplesIterable(_BaseExamplesIterable):
             self.ex_iterable.shard_data_sources(worker_id, num_workers),
             features=self.features,
             token_per_repo_id=self.token_per_repo_id,
-            format_type=self.format_type,
+            formatting=self.formatting,
         )
 
     @property
@@ -2276,13 +2276,44 @@ class IterableDataset(DatasetInfoMixin):
     ) -> "IterableDataset":
         """
         Return a dataset with the specified format.
-        Supported formats: "arrow", or None for regular python objects.
-        The other formats are currently not implemented.
+        The 'pandas' format is currently not implemented.
 
         Args:
 
-            type (`str`, optional, default None): if set to "torch", the returned dataset
-                will be a subclass of torch.utils.data.IterableDataset to be used in a DataLoader
+            type (`str`, *optional*):
+                Either output type selected in `[None, 'numpy', 'torch', 'tensorflow', 'arrow', 'jax']`.
+                `None` means it returns python objects (default).
+
+        Example:
+
+        ```py
+        >>> from datasets import load_dataset
+        >>> from transformers import AutoTokenizer
+        >>> ds = load_dataset("rotten_tomatoes", split="validation", streaming=True)
+        >>> tokenizer = AutoTokenizer.from_pretrained("bert-base-cased")
+        >>> ds = ds.map(lambda x: tokenizer(x['text'], truncation=True, padding=True), batched=True)
+        >>> ds = ds.with_format("torch")
+        >>> next(iter(ds))
+        {'text': 'compassionately explores the seemingly irreconcilable situation between conservative christian parents and their estranged gay and lesbian children .',
+         'label': tensor(1),
+         'input_ids': tensor([  101, 18027, 16310, 16001,  1103,  9321,   178, 11604,  7235,  6617,
+                1742,  2165,  2820,  1206,  6588, 22572, 12937,  1811,  2153,  1105,
+                1147, 12890, 19587,  6463,  1105, 15026,  1482,   119,   102,     0,
+                    0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+                    0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+                    0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+                    0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+                    0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+                    0,     0,     0,     0]),
+         'token_type_ids': tensor([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+         'attention_mask': tensor([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])}
+        ```
         """
         type = get_format_type_from_alias(type)
         # TODO(QL): add format_kwargs
@@ -2386,19 +2417,32 @@ class IterableDataset(DatasetInfoMixin):
         if fn_kwargs is None:
             fn_kwargs = {}
 
-        ex_iterable = (
-            RebatchedArrowExamplesIterable(self._ex_iterable, batch_size=batch_size, drop_last_batch=drop_last_batch)
-            if self._formatting and self._ex_iterable.iter_arrow
-            else self._ex_iterable
-        )
-        if self._formatting or features:
-            # apply formatting after iter_arrow to avoid re-encoding the examples
+        ex_iterable = self._ex_iterable
+        if self._formatting and self._formatting.format_type == "arrow":
+            # apply formatting before iter_arrow to keep map examples iterable happy
             ex_iterable = FormattedExamplesIterable(
                 ex_iterable,
                 formatting=copy.deepcopy(self._formatting),
                 features=features,
                 token_per_repo_id=self._token_per_repo_id,
             )
+            ex_iterable = RebatchedArrowExamplesIterable(
+                ex_iterable, batch_size=batch_size if batched else 1, drop_last_batch=drop_last_batch
+            )
+        else:
+            if self._formatting and self._ex_iterable.iter_arrow:
+                ex_iterable = RebatchedArrowExamplesIterable(
+                    self._ex_iterable, batch_size=batch_size if batched else 1, drop_last_batch=drop_last_batch
+                )
+            if self._formatting or features:
+                # apply formatting after iter_arrow to avoid re-encoding the examples
+                ex_iterable = FormattedExamplesIterable(
+                    ex_iterable,
+                    formatting=copy.deepcopy(self._formatting),
+                    features=features,
+                    token_per_repo_id=self._token_per_repo_id,
+                )
+
         ex_iterable = MappedExamplesIterable(
             ex_iterable,
             function=function,
@@ -2409,6 +2453,7 @@ class IterableDataset(DatasetInfoMixin):
             drop_last_batch=drop_last_batch,
             remove_columns=remove_columns,
             fn_kwargs=fn_kwargs,
+            # pass formatting bc we need to know that we can call iter_arrow if the formatting is arrow
             formatting=copy.deepcopy(self._formatting)
             if self._formatting and self._formatting.format_type == "arrow"
             else None,  # formatting is handled within ex_iterable
@@ -2494,7 +2539,7 @@ class IterableDataset(DatasetInfoMixin):
             batched=batched,
             batch_size=batch_size,
             fn_kwargs=fn_kwargs,
-            formatting=self._formatting,  # we still pass formatting to enable iter_arrow with formatting
+            formatting=copy.deepcopy(self._formatting),  # required by iter_arrow
         )
         return IterableDataset(
             ex_iterable=ex_iterable,
