@@ -2445,6 +2445,7 @@ class IterableDataset(DatasetInfoMixin):
         remove_columns: Optional[Union[str, List[str]]] = None,
         features: Optional[Features] = None,
         fn_kwargs: Optional[dict] = None,
+        format_outputs: bool = True,
     ) -> "IterableDataset":
         """
         Apply a function to all the examples in the iterable dataset (individually or in batches) and update them.
@@ -2569,7 +2570,7 @@ class IterableDataset(DatasetInfoMixin):
             ex_iterable=ex_iterable,
             info=info,
             split=self._split,
-            formatting=self._formatting,
+            formatting=self._formatting if format_outputs else None,
             shuffling=copy.deepcopy(self._shuffling),
             distributed=copy.deepcopy(self._distributed),
             token_per_repo_id=self._token_per_repo_id,
