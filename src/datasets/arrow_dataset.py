@@ -2367,16 +2367,18 @@ class Dataset(DatasetInfoMixin, IndexableMixin, TensorflowDatasetMixin):
             formatter = get_formatter(self._format_type, features=self._info.features, **format_kwargs)
             batch_size = config.ARROW_READER_BATCH_SIZE_IN_DATASET_ITER
             for pa_subtable in table_iter(self.data, batch_size=batch_size):
-                for i in range(pa_subtable.num_rows):
-                    pa_subtable_ex = pa_subtable.slice(i, 1)
-                    formatted_output = format_table(
-                        pa_subtable_ex,
-                        0,
-                        formatter=formatter,
-                        format_columns=self._format_columns,
-                        output_all_columns=self._output_all_columns,
-                    )
-                    yield formatted_output
+                formatted_output = format_table(
+                    pa_subtable,
+                    range(pa_subtable.num_rows),
+                    formatter=formatter,
+                    format_columns=self._format_columns,
+                    output_all_columns=self._output_all_columns,
+                )
+                keys = formatted_output.keys()
+                value_arrays = [formatted_output[key] for key in keys]
+                for vals in zip(*value_arrays):
+                    yield dict(zip(keys, vals))
+
         else:
             for i in range(self.num_rows):
                 yield self._getitem(

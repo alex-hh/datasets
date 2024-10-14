@@ -107,6 +107,16 @@ def _is_array_with_nulls(pa_array: pa.Array) -> bool:
     return pa_array.null_count > 0
 
 
+def dict_of_lists_to_list_of_dicts(dict_of_lists: Dict[str, List[T]]) -> List[Dict[str, T]]:
+    # convert to list of dicts
+    list_of_dicts = []
+    keys = dict_of_lists.keys()
+    value_arrays = [dict_of_lists[key] for key in keys]
+    for vals in zip(*value_arrays):
+        list_of_dicts.append(dict(zip(keys, vals)))
+    return list_of_dicts
+
+
 class BaseArrowExtractor(Generic[RowFormat, ColumnFormat, BatchFormat]):
     """
     Arrow extractor are used to extract data from pyarrow tables.
